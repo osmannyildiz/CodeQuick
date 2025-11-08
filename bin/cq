@@ -1,0 +1,196 @@
+#!/bin/zsh
+
+# Without this, the script continues even if a command fails. With this, the script stops at the first command that fails.
+set -e
+
+# Base directories
+ROOT_DIR="/Users/osman/aa/code/_cq"
+REALS_DIR="$ROOT_DIR/reals"
+LINKS_DIR="$ROOT_DIR/links"
+
+# Ensure base directories exist
+mkdir -p "$REALS_DIR" "$LINKS_DIR"
+
+print_err() { echo "$*" 1>&2; }
+
+require_arg() {
+  local got="$1"; local msg="$2"
+  if [[ -z "$got" ]]; then
+    print_err "$msg"; exit 2
+  fi
+}
+
+link_exists() {
+  [[ -L "$LINKS_DIR/$1" ]]
+}
+
+get_real_id_from_link_name() {
+  local link_name="$1"
+  local target
+  target=$(readlink "$LINKS_DIR/$link_name") || return 1
+  basename "$target"
+}
+
+get_real_path_from_link_name() {
+  local link_name="$1"
+  local real_id
+  real_id=$(get_real_id_from_link_name "$link_name") || return 1
+  echo "$REALS_DIR/$real_id"
+}
+
+# Sanitize a name to kebab-case
+sanitize_name() {
+  local name="$1"
+  # Convert to lowercase, replace spaces and underscores with hyphens,
+  # remove non-alphanumeric except hyphens, collapse multiple hyphens
+  echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//'
+}
+
+# == COMMANDS BEGIN ==
+
+cmd_ls() {
+  if [[ $# -ne 0 ]]; then
+    echo "Usage: cq ls" >&2
+    return 1
+  fi
+
+  local selected
+  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="Select project: ") || return 1
+  [[ -z "$selected" ]] && echo "Nothing selected" && return
+
+  echo -n "$selected" | pbcopy
+  echo "Copied to clipboard: $selected"
+}
+
+# Internal command used by wrapper. Wrapper handles the `cq cd` command.
+cmd__cd() {
+  local selected
+  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="cd into project: ") || return 1
+  [[ -z "$selected" ]] && echo "Nothing selected" && return
+
+  echo "$LINKS_DIR/$selected"
+}
+
+cmd_path() {
+  local link_name="$1"
+  require_arg "$link_name" "Missing project name. Usage: cq path <PROJECT_NAME>"
+  if ! link_exists "$link_name"; then print_err "Link not found: $link_name"; exit 1; fi
+
+  get_real_path_from_link_name "$link_name"
+}
+
+cmd_mk() {
+  local link_name_raw="$1"
+  require_arg "$link_name_raw" "Missing project name. Usage: cq mk <PROJECT_NAME>"
+
+  local link_name
+  link_name=$(sanitize_name "$link_name_raw")
+  if [[ -z "$link_name" ]]; then print_err "Sanitized name is empty"; exit 2; fi
+  if link_exists "$link_name"; then print_err "Link already exists: $link_name"; exit 1; fi
+
+  local real_path
+  real_path=$(mktemp -d "$REALS_DIR/cq-XXXXXXXX") || { print_err "Failed to create real dir"; exit 1; }
+  local real_id
+  real_id=$(basename "$real_path")
+  ln -s "../reals/$real_id" "$LINKS_DIR/$link_name" || { print_err "Failed to create symlink"; exit 1; }
+  
+  echo "Created project: $link_name"
+}
+
+cmd_cp() {
+  local old_link_name_raw="$1"; local suffix_raw="$2"
+  require_arg "$old_link_name_raw" "Missing old project name. Usage: cq cp <OLD_PROJECT_NAME> <NEW_PROJECT_SUFFIX>"
+  require_arg "$suffix_raw" "Missing new project suffix. Usage: cq cp <OLD_PROJECT_NAME> <NEW_PROJECT_SUFFIX>"
+  
+  local old_link_name
+  old_link_name=$(sanitize_name "$old_link_name_raw")
+  if ! link_exists "$old_link_name"; then print_err "Old link not found: $old_link_name"; exit 1; fi
+  local suffix
+  suffix=$(sanitize_name "$suffix_raw")
+  if [[ -z "$suffix" ]]; then print_err "Sanitized suffix is empty"; exit 2; fi
+  local new_link_name="${old_link_name}__${suffix}"
+  if link_exists "$new_link_name"; then print_err "New link already exists: $new_link_name"; exit 1; fi
+
+  local old_real_id new_real_path new_real_id
+  old_real_id=$(get_real_id_from_link_name "$old_link_name") || { print_err "Failed to resolve old real id"; exit 1; }
+  new_real_path=$(mktemp -d "$REALS_DIR/cq-XXXXXXXX") || { print_err "Failed to create new real dir"; exit 1; }
+  new_real_id=$(basename "$new_real_path")
+
+  # Copy contents, preserving attributes (-a); clone/copy-on-write when possible (-c)
+  cp -a -c "$REALS_DIR/$old_real_id/" "$new_real_path/" || { print_err "Failed to copy contents"; exit 1; }
+  ln -s "../reals/$new_real_id" "$LINKS_DIR/$new_link_name" || { print_err "Failed to create symlink"; exit 1; }
+
+  echo "Created copy: $new_link_name"
+}
+
+cmd_rename() {
+  local old_link_name_raw="$1"; local new_link_name_raw="$2"
+  require_arg "$old_link_name_raw" "Missing old project name. Usage: cq rename <OLD_PROJECT_NAME> <NEW_PROJECT_NAME>"
+  require_arg "$new_link_name_raw" "Missing new project name. Usage: cq rename <OLD_PROJECT_NAME> <NEW_PROJECT_NAME>"
+
+  local old_link_name new_link_name
+  old_link_name=$(sanitize_name "$old_link_name_raw")
+  new_link_name=$(sanitize_name "$new_link_name_raw")
+  if ! link_exists "$old_link_name"; then print_err "Old link not found: $old_link_name"; exit 1; fi
+  if [[ -z "$new_link_name" ]]; then print_err "Sanitized new link name is empty"; exit 2; fi
+  if link_exists "$new_link_name"; then print_err "New link already exists: $new_link_name"; exit 1; fi
+
+  mv "$LINKS_DIR/$old_link_name" "$LINKS_DIR/$new_link_name"
+
+  echo "Renamed to: $new_link_name"
+}
+
+cmd_rm() {
+  local link_name_raw="$1"
+  require_arg "$link_name_raw" "Missing project name. Usage: cq rm <PROJECT_NAME>"
+
+  local link_name
+  link_name=$(sanitize_name "$link_name_raw")
+  if ! link_exists "$link_name"; then print_err "Link not found: $link_name"; exit 1; fi
+
+  local real_id real_path
+  real_id=$(get_real_id_from_link_name "$link_name") || { print_err "Failed to resolve real dir"; exit 1; }
+  real_path="$REALS_DIR/$real_id"
+  if [[ ! -d "$real_path" ]]; then print_err "Real dir missing: $real_path"; exit 1; fi
+
+  # This ain' no atomic, cuz I ain' no nuclear engineer.
+  # (jk I just don't care about this project that much)
+  trash "$real_path" || { print_err "Failed to trash real dir"; exit 1; }
+  trash "$LINKS_DIR/$link_name" || { print_err "Failed to trash link (real dir already trashed)"; exit 1; }
+
+  echo "Removed: $link_name"
+}
+
+# == COMMANDS END ==
+
+main() {
+  local cmd="${1:-}"
+  [[ $# -gt 0 ]] && shift
+
+  case "$cmd" in
+    ls)        cmd_ls "$@" ;;
+    _cd)       cmd__cd "$@" ;;
+    mk)        cmd_mk "$@" ;;
+    cp)        cmd_cp "$@" ;;
+    rename)    cmd_rename "$@" ;;
+    path)      cmd_path "$@" ;;
+    rm)        cmd_rm "$@" ;;
+    ""|help|-h|--help)
+      cat <<EOF
+Usage: cq <command> [...args]
+Commands:
+  help                                            Show this help message
+  ls                                              List projects, copy selection to clipboard
+  cd                                              List projects, cd into selected one
+  mk <PROJECT_NAME>                               Create new project
+  cp <OLD_PROJECT_NAME> <NEW_PROJECT_SUFFIX>      Create a copy of an existing project
+  rename <OLD_PROJECT_NAME> <NEW_PROJECT_NAME>    Rename a project
+  path <PROJECT_NAME>                             Print absolute path of project
+  rm <PROJECT_NAME>                               Move project to Trash
+EOF
+      ;;
+    *) print_err "Unknown command: $cmd"; exit 2 ;;
+  esac
+}
+
+main "$@"
