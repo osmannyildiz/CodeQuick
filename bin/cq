@@ -71,6 +71,14 @@ cmd__cd() {
   echo "$LINKS_DIR/$selected"
 }
 
+cmd_open() {
+  local selected
+  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="Open project in editor: ") || return 1
+  [[ -z "$selected" ]] && echo "Nothing selected" && return
+
+  cursor "$LINKS_DIR/$selected"
+}
+
 cmd_path() {
   local link_name="$1"
   require_arg "$link_name" "Missing project name. Usage: cq path <PROJECT_NAME>"
@@ -165,6 +173,7 @@ main() {
   case "$cmd" in
     ls)        cmd_ls "$@" ;;
     _cd)       cmd__cd "$@" ;;
+    open)      cmd_open "$@" ;;
     mk)        cmd_mk "$@" ;;
     cp)        cmd_cp "$@" ;;
     rename)    cmd_rename "$@" ;;
@@ -177,6 +186,7 @@ Commands:
   help                                            Show this help message
   ls                                              List projects, copy selection to clipboard
   cd                                              List projects, cd into selected one
+  open                                            List projects, open selected one in editor
   mk <PROJECT_NAME>                               Create new project
   cp <OLD_PROJECT_NAME> <NEW_PROJECT_SUFFIX>      Create a copy of an existing project
   rename <OLD_PROJECT_NAME> <NEW_PROJECT_NAME>    Rename a project
