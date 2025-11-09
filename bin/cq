@@ -11,7 +11,7 @@ LINKS_DIR="$ROOT_DIR/links"
 # Ensure base directories exist
 mkdir -p "$REALS_DIR" "$LINKS_DIR"
 
-print_err() { echo "$*" 1>&2; }
+print_err() { echo "\033[31m$*\033[0m" 1>&2; }
 
 require_arg() {
   local got="$1"; local msg="$2"
