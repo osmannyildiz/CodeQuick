@@ -87,7 +87,9 @@ cmd_open() {
   [[ -z "$selected" ]] && echo "Nothing selected" && return
 
   record_access "$selected"
-  cursor "$LINKS_DIR/$selected"
+  local real_path
+  real_path=$(get_real_path_from_link_name "$selected") || { print_err "Failed to resolve real path"; return 1; }
+  cursor "$real_path"
 }
 
 cmd_path() {
