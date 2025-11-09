@@ -46,6 +46,14 @@ sanitize_name() {
   echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//'
 }
 
+get_sorted_links() {
+  ls -1t "$LINKS_DIR" 2>/dev/null | grep -v '^\.' || ls -1 "$LINKS_DIR" 2>/dev/null
+}
+
+record_access() {
+  touch -h "$LINKS_DIR/$1" 2>/dev/null || true
+}
+
 # == COMMANDS BEGIN ==
 
 cmd_ls() {
@@ -55,9 +63,10 @@ cmd_ls() {
   fi
 
   local selected
-  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="Select project: ") || return 1
+  selected=$(get_sorted_links | fzf --height=40% --reverse --prompt="Select project: ") || return 1
   [[ -z "$selected" ]] && echo "Nothing selected" && return
 
+  record_access "$selected"
   echo -n "$selected" | pbcopy
   echo "Copied to clipboard: $selected"
 }
@@ -65,17 +74,19 @@ cmd_ls() {
 # Internal command used by wrapper. Wrapper handles the `cq cd` command.
 cmd__cd() {
   local selected
-  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="cd into project: ") || return 1
+  selected=$(get_sorted_links | fzf --height=40% --reverse --prompt="cd into project: ") || return 1
   [[ -z "$selected" ]] && echo "Nothing selected" && return
 
+  record_access "$selected"
   echo "$LINKS_DIR/$selected"
 }
 
 cmd_open() {
   local selected
-  selected=$(ls -1 "$LINKS_DIR" 2>/dev/null | fzf --height=40% --reverse --prompt="Open project in editor: ") || return 1
+  selected=$(get_sorted_links | fzf --height=40% --reverse --prompt="Open project in editor: ") || return 1
   [[ -z "$selected" ]] && echo "Nothing selected" && return
 
+  record_access "$selected"
   cursor "$LINKS_DIR/$selected"
 }
 
