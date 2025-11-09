@@ -54,6 +54,24 @@ record_access() {
   touch -h "$LINKS_DIR/$1" 2>/dev/null || true
 }
 
+set_window_title() {
+  local real_path="$1"
+  local link_name="$2"
+  local settings_dir="$real_path/.vscode"
+  local settings_file="$settings_dir/settings.json"
+  
+  mkdir -p "$settings_dir"
+  
+  if [[ -f "$settings_file" ]]; then
+    # Merge with existing settings
+    jq --arg title "$link_name" '. + {"window.title": $title}' "$settings_file" > "$settings_file.tmp" \
+      && mv "$settings_file.tmp" "$settings_file"
+  else
+    # Create new settings file
+    jq -n --arg title "$link_name" '{"window.title": $title}' > "$settings_file"
+  fi
+}
+
 # == COMMANDS BEGIN ==
 
 cmd_ls() {
@@ -114,6 +132,7 @@ cmd_mk() {
   local real_id
   real_id=$(basename "$real_path")
   ln -s "../reals/$real_id" "$LINKS_DIR/$link_name" || { print_err "Failed to create symlink"; exit 1; }
+  set_window_title "$real_path" "$link_name"
   
   echo "Created project: $link_name"
 }
@@ -138,6 +157,7 @@ cmd_cp() {
   # Copy contents, preserving attributes (-a); clone/copy-on-write when possible (-c)
   cp -a -c "$REALS_DIR/$old_real_id/" "$new_real_path/" || { print_err "Failed to copy contents"; exit 1; }
   ln -s "../reals/$new_real_id" "$LINKS_DIR/$new_link_name" || { print_err "Failed to create symlink"; exit 1; }
+  set_window_title "$new_real_path" "$new_link_name"
 
   echo "Created copy: $new_link_name"
 }
@@ -154,6 +174,10 @@ cmd_rename() {
   if link_exists "$new_link_name"; then print_err "New link already exists: $new_link_name"; exit 1; fi
 
   mv "$LINKS_DIR/$old_link_name" "$LINKS_DIR/$new_link_name"
+  
+  local real_path
+  real_path=$(get_real_path_from_link_name "$new_link_name") || { print_err "Failed to resolve real path"; exit 1; }
+  set_window_title "$real_path" "$new_link_name"
 
   echo "Renamed to: $new_link_name"
 }
