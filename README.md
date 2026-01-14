@@ -6,7 +6,8 @@ Quick project manager for macOS/Zsh that helps you manage and navigate between p
 
 - Create, copy, rename, and remove projects
 - Quick project navigation with fuzzy finding
-- Open projects in Cursor IDE with automatic window title management
+- Open projects in your preferred app/editor
+- Automatic window title management for VSCode-based editors
 - Projects stored in a centralized location with clean symlinks
 - Clipboard integration for project names
 - macOS Trash integration for safe deletion
@@ -29,6 +30,7 @@ This preserves Cursor's chat history (which is keyed by directory path) while gi
 ## Installation
 
 1. Ensure you have the required dependencies:
+
    - `zsh`, `pbcopy`, `trash` (standard on macOS)
    - `fzf` (install with `brew install fzf`)
    - `jq` (install with `brew install jq`)
@@ -80,15 +82,21 @@ cq cd
 ```
 
 Opens an interactive fzf menu and changes your shell's working directory to the selected project.
-*Requires the zsh wrapper to be loaded.*
+_Requires the zsh wrapper to be loaded._
 
-### Open a project in Cursor IDE
+### Open a project in an app/editor
 
 ```bash
-cq open
+cq open <fx|vsc|cur|agy|zed>
 ```
 
-Opens an interactive fzf menu and launches the selected project in Cursor IDE. The project opens using the real directory path (not the symlink) for proper file watching and workspace behavior.
+Opens an interactive fzf menu and launches the selected project in the specified app/editor:
+
+- `fx` - Finder (macOS file explorer)
+- `vsc` - Visual Studio Code
+- `cur` - Cursor
+- `agy` - Antigravity
+- `zed` - Zed
 
 ### Get project path
 
