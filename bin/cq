@@ -100,14 +100,27 @@ cmd__cd() {
 }
 
 cmd_open() {
+  local app="$1"
+  require_arg "$app" "Missing app/editor. Usage: cq open <fx|vsc|cur|agy|zed>"
+
+  local open_cmd
+  case "$app" in
+    fx)  open_cmd="open" ;;
+    vsc) open_cmd="code" ;;
+    cur) open_cmd="cursor" ;;
+    agy) open_cmd="agy" ;;
+    zed) open_cmd="zed" ;;
+    *)   print_err "Unknown app/editor: $app. Valid options: fx, vsc, cur, agy, zed"; exit 2 ;;
+  esac
+
   local selected
-  selected=$(get_sorted_links | fzf --height=40% --reverse --prompt="Open project in editor: ") || return 1
+  selected=$(get_sorted_links | fzf --height=40% --reverse --prompt="Open project in app/editor: ") || return 1
   [[ -z "$selected" ]] && echo "Nothing selected" && return
 
   record_access "$selected"
   local real_path
   real_path=$(get_real_path_from_link_name "$selected") || { print_err "Failed to resolve real path"; return 1; }
-  cursor "$real_path"
+  $open_cmd "$real_path"
 }
 
 cmd_path() {
@@ -223,7 +236,7 @@ Commands:
   help                                            Show this help message
   ls                                              List projects, copy selection to clipboard
   cd                                              List projects, cd into selected one
-  open                                            List projects, open selected one in editor
+  open <fx|vsc|cur|agy|zed>                       List projects, open selected one in app/editor
   mk <PROJECT_NAME>                               Create new project
   cp <OLD_PROJECT_NAME> <NEW_PROJECT_SUFFIX>      Create a copy of an existing project
   rename <OLD_PROJECT_NAME> <NEW_PROJECT_NAME>    Rename a project

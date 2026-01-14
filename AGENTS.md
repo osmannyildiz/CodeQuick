@@ -1,4 +1,6 @@
-# CodeQuick Agent Guide
+# AGENTS.md
+
+This file provides context for AI coding agents working on this project.
 
 ## Project Overview
 
@@ -77,16 +79,16 @@ Created with `mktemp -d "$REALS_DIR/cq-XXXXXXXX"` which generates 8 random alpha
 
 ### Command Reference
 
-| Command  | Internal Function       | Description                                             |
-| -------- | ----------------------- | ------------------------------------------------------- |
-| `ls`     | `cmd_ls`                | Interactive fzf selection, copies name to clipboard     |
-| `cd`     | `cmd__cd` (via wrapper) | Interactive fzf selection, changes directory            |
-| `open`   | `cmd_open`              | Interactive fzf selection, opens in Cursor IDE          |
-| `mk`     | `cmd_mk`                | Creates new project                                     |
-| `cp`     | `cmd_cp`                | Copies project with suffix (creates `<name>__<suffix>`) |
-| `rename` | `cmd_rename`            | Renames symlink only, updates window title              |
-| `path`   | `cmd_path`              | Outputs real path for a project                         |
-| `rm`     | `cmd_rm`                | Moves project and symlink to Trash                      |
+| Command  | Internal Function       | Description                                                                       |
+| -------- | ----------------------- | --------------------------------------------------------------------------------- |
+| `ls`     | `cmd_ls`                | Interactive fzf selection, copies name to clipboard                               |
+| `cd`     | `cmd__cd` (via wrapper) | Interactive fzf selection, changes directory                                      |
+| `open`   | `cmd_open`              | Interactive fzf selection, opens in specified app/editor (fx\|vsc\|cur\|agy\|zed) |
+| `mk`     | `cmd_mk`                | Creates new project                                                               |
+| `cp`     | `cmd_cp`                | Copies project with suffix (creates `<name>__<suffix>`)                           |
+| `rename` | `cmd_rename`            | Renames symlink only, updates window title                                        |
+| `path`   | `cmd_path`              | Outputs real path for a project                                                   |
+| `rm`     | `cmd_rm`                | Moves project and symlink to Trash                                                |
 
 ## Development Notes
 
